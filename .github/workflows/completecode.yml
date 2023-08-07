@@ -3,7 +3,7 @@ name: Semgrep SAST Scan
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   semgrep-scan:
@@ -24,9 +24,7 @@ jobs:
 
     - name: Run Semgrep and get results in JSON
       run: |
-        run: |
-          semgrep --config=p/ci --json -o results.json .
-
+        semgrep --config=p/ci --json -o results.json .
 
     - name: Process Semgrep results
       shell: python
