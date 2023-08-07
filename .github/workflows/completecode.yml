@@ -54,7 +54,8 @@ jobs:
             else:
                 low.append(row)
 
-        all_findings = high + medium + low
+        breaker_row = ['', '', '']
+        all_findings = high + [breaker_row] + medium + [breaker_row] + low
         headers = ["Severity", "Check ID", "Message"]
         table = tabulate(all_findings, headers, tablefmt="pipe")
         print(table)
