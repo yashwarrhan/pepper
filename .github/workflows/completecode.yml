@@ -94,7 +94,7 @@ jobs:
           
   Trufflehog:
     name: Trufflehog Scan
-    needs: secret_scan
+    #needs: secret_scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -180,7 +180,7 @@ jobs:
 # Bandit for Source Code Review
   Bandit:
     name: Bandit Scan
-    needs: Trufflehog
+   # needs: Trufflehog
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
