@@ -1,0 +1,56 @@
+name: Semgrep SAST Scan
+
+on:
+  push:
+    branch:
+ 
+
+jobs:
+  semgrep-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install Semgrep
+      run: |
+        pip install semgrep
+
+    - name: Run Semgrep and get results in JSON
+      run: |
+        semgrep --config=p/r2c-ci --json -o results.json
+
+    - name: Process Semgrep results
+      shell: python
+      run: |
+        import json
+
+        with open('results.json', 'r') as file:
+            results = json.load(file)
+
+        high, medium, low = [], [], []
+
+        for finding in results['results']:
+            severity = finding['extra']['severity']
+            if severity == 'ERROR':
+                high.append(finding)
+            elif severity == 'WARNING':
+                medium.append(finding)
+            else:
+                low.append(finding)
+
+        all_findings = high + medium + low
+
+        print("Severity   | Check ID             | Message")
+        print("-" * 60)
+
+        for finding in all_findings:
+            severity = finding['extra']['severity']
+            severity_label = "High" if severity == 'ERROR' else "Medium" if severity == 'WARNING' else "Low"
+            print(f"{severity_label: <10} | {finding['check_id']: <20} | {finding['extra']['message']}")
