@@ -31,6 +31,10 @@ jobs:
       run: |
         import json
         from tabulate import tabulate
+        import textwrap
+
+        def wrap_text(text, width=40):
+            return "\n".join(textwrap.wrap(text, width))
 
         with open('results.json', 'r') as file:
             results = json.load(file)
@@ -40,7 +44,9 @@ jobs:
         for finding in results['results']:
             severity = finding['extra']['severity']
             severity_label = "High" if severity == 'ERROR' else "Medium" if severity == 'WARNING' else "Low"
-            row = [severity_label, finding['check_id'], finding['extra']['message']]
+            check_id = wrap_text(finding['check_id'])
+            message = wrap_text(finding['extra']['message'])
+            row = [severity_label, check_id, message]
             if severity == 'ERROR':
                 high.append(row)
             elif severity == 'WARNING':
