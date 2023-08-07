@@ -35,11 +35,9 @@ jobs:
           import os
           import datetime
           from tabulate import tabulate
-
           def parse_trufflehog_output(file_path):
               table = []  # Initialize an empty table
               table_headers = ["Branch", "Commit", "Commit Hash", "Date", "Reason"]
-
               with open(file_path, "r") as file:
                   for line in file:
                       try:
@@ -48,25 +46,20 @@ jobs:
                           table.append(row)
                       except json.JSONDecodeError as e:
                           print(f"Failed to parse line as JSON: {line}")
-
               return table_headers, table
-
           if __name__ == "__main__":
               input_file_path = "truffleHog.json"  # Use the correct path to the truffleHog.json file here
               table_headers, table_data = parse_trufflehog_output(input_file_path)
-
               print(tabulate(table_data, headers=table_headers, tablefmt='grid'))
-
               # Save the parsed data into a text file
               nameofuser = "yash"  # Replace this with your username
               nameofjob = "trufflehog"   # Replace this with the job name or any relevant identifier
               now = datetime.datetime.now()
               date_and_time = now.strftime("%Y-%m-%d_%H-%M")
               output_file_path = f"{nameofuser}_{nameofjob}_{date_and_time}.txt"
-
               with open(output_file_path, "w") as file:
-                  file.write(tabulate(table_data, headers=table_headers, tablefmt='grid'))
-            print(f'::set-output name=file-path::{file_path}')
+                file.write(tabulate(table_data, headers=table_headers, tablefmt='grid'))
+              print(f'::set-output name=file-path::{output_file_path}')
         shell: python
         
       - name: Authenticate to Google Cloud
@@ -176,7 +169,6 @@ jobs:
           else
             echo "No secrets found. Continuing with the workflow."
           fi
-
                       
 # Bandit for Source Code Review
   Bandit:
