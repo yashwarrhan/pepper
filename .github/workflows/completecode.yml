@@ -24,7 +24,9 @@ jobs:
 
     - name: Run Semgrep and get results in JSON
       run: |
-        semgrep --config=p/r2c-ci --json -o results.json .
+        run: |
+          semgrep --config=p/ci --json -o results.json .
+
 
     - name: Process Semgrep results
       shell: python
