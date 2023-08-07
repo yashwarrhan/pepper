@@ -24,7 +24,7 @@ jobs:
 
     - name: Run Semgrep and get results in JSON
       run: |
-        semgrep --config=p/r2c-ci --json -o results.json
+        semgrep --config=p/r2c-ci --json -o results.json .
 
     - name: Process Semgrep results
       shell: python
@@ -39,7 +39,7 @@ jobs:
         with open('results.json', 'r') as file:
             results = json.load(file)
 
-        high, medium, low = [], [], []
+        findings = []
 
         for finding in results['results']:
             severity = finding['extra']['severity']
@@ -47,15 +47,9 @@ jobs:
             check_id = wrap_text(finding['check_id'])
             message = wrap_text(finding['extra']['message'])
             row = [severity_label, check_id, message]
-            if severity == 'ERROR':
-                high.append(row)
-            elif severity == 'WARNING':
-                medium.append(row)
-            else:
-                low.append(row)
+            findings.append(row)
+            findings.append(['-'*10, '-'*20, '-'*40])  # Separator
 
-        breaker_row = ['', '', '']
-        all_findings = high + [breaker_row] + medium + [breaker_row] + low
         headers = ["Severity", "Check ID", "Message"]
-        table = tabulate(all_findings, headers, tablefmt="pipe")
+        table = tabulate(findings[:-1], headers, tablefmt="pipe")  # Exclude the last separator
         print(table)
