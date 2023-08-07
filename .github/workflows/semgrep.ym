@@ -2,7 +2,7 @@ name: Semgrep SAST Scan
 
 on:
   push:
-    branch:
+  workflow_dispatch:
  
 
 jobs:
