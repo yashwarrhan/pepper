@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        microservice: ['service1', 'service2', 'service3'] # Define the microservices here
+        microservice: ['service2'] # Define the microservices here
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -41,10 +41,15 @@ jobs:
           echo "Next version of ${{ matrix.microservice }} will be $NEXT_VERSION"
           echo "next_version=$NEXT_VERSION" >> $GITHUB_ENV
 
-      - name: Build Docker Image for ${{ matrix.microservice }}
+      - name: Print working directory and contents
         run: |
-          docker build -t ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ matrix.microservice }}:$next_version ./${{ matrix.microservice }}
-          docker save ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ matrix.microservice }}:$next_version | gzip > ${{ matrix.microservice }}.tar.gz
+          pwd
+          ls -la
+
+      - name: Build and Compress Docker Image for ${{ matrix.microservice }}
+        run: |
+          docker build -t ${{ env.REGISTRY_HOSTNAME }}/yashwarrhan/${{ matrix.microservice }}:$next_version ./${{ matrix.microservice }}
+          docker save ${{ env.REGISTRY_HOSTNAME }}/yashwarrhan/${{ matrix.microservice }}:$next_version | gzip > ${{ matrix.microservice }}.tar.gz
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -55,7 +60,7 @@ jobs:
 
       - name: Push Docker Image to GitHub Container Registry
         run: |
-          docker push ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ matrix.microservice }}:$next_version
+          docker push ${{ env.REGISTRY_HOSTNAME }}/yashwarrhan/${{ matrix.microservice }}:$next_version
 
       - name: Update version file
         run: echo $next_version > ./${{ matrix.microservice }}/.version
