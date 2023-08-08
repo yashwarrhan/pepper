@@ -1,4 +1,4 @@
-name: Build and Deploy Microservices
+name: Build and Deploy Microservice with Versioning
 
 on:
   push:
@@ -8,68 +8,56 @@ on:
 
 env:
   REGISTRY_HOSTNAME: ghcr.io
+  IMAGE_NAME: pepper # Change this to your repository name
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        microservice: ['service2'] # Define the microservices here
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Read current version of microservice
-        id: read-version
+      - name: Get Latest Tag
+        id: get-latest-tag
         run: |
-          VERSION_FILE="./${{ matrix.microservice }}/.version"
-          if [ -f "$VERSION_FILE" ]; then
-            VERSION=$(cat $VERSION_FILE)
-          else
-            VERSION="0.0.0"
-          fi
-          echo "Current version of ${{ matrix.microservice }} is $VERSION"
-          echo "microservice_version=$VERSION" >> $GITHUB_ENV
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag is $LATEST_TAG"
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
-      - name: Determine next release version
+      - name: Determine Next Version
         id: next-version
         run: |
-          # Increment the patch version
-          IFS='.' read -ra VERSION <<< "$microservice_version"
+          IFS='.' read -ra VERSION <<< "${LATEST_TAG#v}"
           NEXT_PATCH_VERSION=$(( ${VERSION[2]} + 1 ))
-          NEXT_VERSION="${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
-          echo "Next version of ${{ matrix.microservice }} will be $NEXT_VERSION"
-          echo "next_version=$NEXT_VERSION" >> $GITHUB_ENV
+          NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
+          echo "Next version will be $NEXT_VERSION"
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
 
-      - name: Print working directory and contents
-        run: |
-          pwd
-          ls -la
-
-      - name: Build and Compress Docker Image for ${{ matrix.microservice }}
-        run: |
-          docker build -t ${{ env.REGISTRY_HOSTNAME }}/yashwarrhan/${{ matrix.microservice }}:$next_version ./${{ matrix.microservice }}
-          docker save ${{ env.REGISTRY_HOSTNAME }}/yashwarrhan/${{ matrix.microservice }}:$next_version | gzip > ${{ matrix.microservice }}.tar.gz
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
           registry: ${{ env.REGISTRY_HOSTNAME }}
           username: ${{ github.actor }}
-          password: ${{ secrets.BUILDTOCKEN }}
+          password: ${{ secrets.GHCR_TOKEN }} # Use the secret name you created
 
-      - name: Push Docker Image to GitHub Container Registry
-        run: |
-          docker push ${{ env.REGISTRY_HOSTNAME }}/yashwarrhan/${{ matrix.microservice }}:$next_version
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          context: . # This points to the directory where your Dockerfile is located
+          push: true
+          tags: |
+            ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.NEXT_VERSION }}
+            ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
-      - name: Update version file
-        run: echo $next_version > ./${{ matrix.microservice }}/.version
-
-      - name: Commit and tag new version
+      - name: Tag and Push New Version
         run: |
           git config --local user.email "github-actions@noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add ./${{ matrix.microservice }}/.version
-          git commit -m "Bump ${{ matrix.microservice }} version to $next_version"
-          git tag ${{ matrix.microservice }}-v$next_version
-          git push --atomic origin main ${{ matrix.microservice }}-v$next_version
+          git tag $NEXT_VERSION
+          git push origin $NEXT_VERSION
+
+      - name: Notify Build Completion
+        run: echo "Docker image has been built and pushed successfully with version $NEXT_VERSION."
