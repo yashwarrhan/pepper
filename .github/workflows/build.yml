@@ -31,14 +31,12 @@ jobs:
           IFS='.' read -ra VERSION <<< "${LATEST_TAG#v}"
           NEXT_PATCH_VERSION=$(( ${VERSION[2]} + 1 ))
           NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
-          # Check if the next version tag already exists
           while git rev-parse $NEXT_VERSION >/dev/null 2>&1; do
             NEXT_PATCH_VERSION=$(( NEXT_PATCH_VERSION + 1 ))
             NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
           done
           echo "Next version will be $NEXT_VERSION"
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
-
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -48,42 +46,20 @@ jobs:
         with:
           registry: ${{ env.REGISTRY_HOSTNAME }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }} # Use the secret name you created
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v2
         with:
-          context: . # This points to the directory where your Dockerfile is located
+          context: .
           push: true
           tags: |
             ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.NEXT_VERSION }}
             ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
-      - name: Tag and Push New Version
+      - name: Notify Local Endpoint
         run: |
-          git config --local user.email "github-actions@noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git tag $NEXT_VERSION
-          git push origin $NEXT_VERSION --force
-          
-      - name: Setup Kubernetes Context
-        run: |
-          echo "${{ secrets.KUBECONFIG_FILE }}" | base64 --decode > kubeconfig.yaml
-          KUBECONFIG=kubeconfig.yaml kubectl cluster-info
-        env:
-          KUBECONFIG: kubeconfig.yaml
+          curl -X POST -H "Content-Type: application/json" \
+               --data '{"tag": "${{ env.NEXT_VERSION }}"}' \
+               http://192.168.9.45:8000/notify
 
-
-      - name: Package Helm Chart
-        run: helm package ./helm/my-service
-
-      - name: Deploy Helm Chart
-        run: |
-          helm upgrade --install my-release-name ./helm/my-service \
-            --set image.repository=${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }} \
-            --set image.tag=${{ env.NEXT_VERSION }} \
-            --namespace my-namespace \
-            --create-namespace
-
-      - name: Notify Build Completion
-        run: echo "Docker image has been built, pushed, and deployed successfully with version $NEXT_VERSION."
