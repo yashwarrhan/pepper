@@ -63,7 +63,7 @@ jobs:
           for i in {1..30}; do
             curl -X POST -H "Content-Type: application/json" \
                  --data '{"tag": "${{ env.NEXT_VERSION }}"}' \
-                 http://192.168.9.45:8000/notify \
+                 https://8a85-103-186-40-106.ngrok.io/notify \
                  && STATUS=1 && break || echo "Trying to connect..."
             sleep 1
           done
@@ -71,4 +71,5 @@ jobs:
             echo "Failed to connect after 30 attempts. Exiting."
             exit 1
           fi
+
 
