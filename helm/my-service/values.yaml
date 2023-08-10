@@ -1,0 +1,10 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/your-repo-owner/your-repo-name
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 80
