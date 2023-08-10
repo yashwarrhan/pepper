@@ -64,7 +64,8 @@ jobs:
           git config --local user.email "github-actions@noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git tag $NEXT_VERSION
-          git push origin $NEXT_VERSION
+          git push origin $NEXT_VERSION --force
+
 
       - name: Package Helm Chart
         run: helm package ./helm/my-service
