@@ -59,5 +59,16 @@ jobs:
           git tag $NEXT_VERSION
           git push origin $NEXT_VERSION
 
+      - name: Package Helm Chart
+        run: helm package ./helm/my-service
+
+      - name: Deploy Helm Chart
+        run: |
+          helm upgrade --install my-release-name ./helm/my-service \
+            --set image.repository=${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ env.NEXT_VERSION }} \
+            --namespace my-namespace \
+            --create-namespace
+
       - name: Notify Build Completion
-        run: echo "Docker image has been built and pushed successfully with version $NEXT_VERSION."
+        run: echo "Docker image has been built, pushed, and deployed successfully with version $NEXT_VERSION."
