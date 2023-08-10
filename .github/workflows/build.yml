@@ -27,11 +27,18 @@ jobs:
       - name: Determine Next Version
         id: next-version
         run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           IFS='.' read -ra VERSION <<< "${LATEST_TAG#v}"
           NEXT_PATCH_VERSION=$(( ${VERSION[2]} + 1 ))
           NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
+          # Check if the next version tag already exists
+          while git rev-parse $NEXT_VERSION >/dev/null 2>&1; do
+            NEXT_PATCH_VERSION=$(( NEXT_PATCH_VERSION + 1 ))
+            NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
+          done
           echo "Next version will be $NEXT_VERSION"
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
