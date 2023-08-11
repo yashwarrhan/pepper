@@ -17,26 +17,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Get Latest Tag
-        id: get-latest-tag
+      - name: Get package metadata
+        id: package
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Latest tag is $LATEST_TAG"
-          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+          sudo apt-get install jq
+          PACKAGE_VERSION=$(cat package.json | jq -r .version)
+          BUILD_DATE=$(date +%s | LC_ALL=en_US.UTF-8 numfmt --grouping | sed 's/,/_/g')
 
-      - name: Determine Next Version
-        id: next-version
+          echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> $GITHUB_ENV
+          echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+
+          echo "::set-output name=package-version::${PACKAGE_VERSION}"
+          echo "::set-output name=build-date::${BUILD_DATE}"
+
+      - name: Update versionInfo
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          IFS='.' read -ra VERSION <<< "${LATEST_TAG#v}"
-          NEXT_PATCH_VERSION=$(( ${VERSION[2]} + 1 ))
-          NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
-          while git rev-parse $NEXT_VERSION >/dev/null 2>&1; do
-            NEXT_PATCH_VERSION=$(( NEXT_PATCH_VERSION + 1 ))
-            NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
-          done
-          echo "Next version will be $NEXT_VERSION"
-          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+          cat <<EOF > libs/resources/versionInfo.generated.ts
+          // This is automatically generated file
+
+          export const BuildNumber = '${{ github.run_number }}';
+          export const BuildVersion = '${{ steps.package.outputs['package-version'] }}';
+          export const BuildDate = ${{ steps.package.outputs['build-date'] }}_000;
+          export const environment: 'dev' | 'production' = 'production';
+          EOF
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -54,7 +57,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.NEXT_VERSION }}
+            ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.package.outputs['package-version'] }}
             ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Notify Local Endpoint
@@ -62,7 +65,7 @@ jobs:
           STATUS=0
           for i in {1..30}; do
             curl -X POST -H "Content-Type: application/json" \
-                 --data '{"tag": "${{ env.NEXT_VERSION }}"}' \
+                 --data '{"tag": "${{ steps.package.outputs['package-version'] }}"}' \
                  https://8a85-103-186-40-106.ngrok.io/notify \
                  && STATUS=1 && break || echo "Trying to connect..."
             sleep 1
@@ -71,5 +74,3 @@ jobs:
             echo "Failed to connect after 30 attempts. Exiting."
             exit 1
           fi
-
-
