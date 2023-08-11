@@ -17,28 +17,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Fetch all tags
+        run: git fetch --tags
+
       - name: Get Latest Tag
         id: get-latest-tag
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")
           echo "Latest tag is $LATEST_TAG"
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
       - name: Determine Next Version
         id: next-version
         run: |
-          sudo apt-get install jq
-          LATEST_TAG=$(cat package.json | jq -r .version)
-          IFS='.' read -ra VERSION <<< "${LATEST_TAG}"
+          IFS='.' read -ra VERSION <<< "${LATEST_TAG#v}"
           NEXT_PATCH_VERSION=$(( ${VERSION[2]} + 1 ))
-          NEXT_VERSION="${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
+          NEXT_VERSION="v${VERSION[0]}.${VERSION[1]}.$NEXT_PATCH_VERSION"
           echo "Next version will be $NEXT_VERSION"
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
-          jq ".version = \"$NEXT_VERSION\"" package.json > "package_temp.json" && mv "package_temp.json" package.json
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git commit -am "Update version to $NEXT_VERSION"
-          git push
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -59,17 +55,20 @@ jobs:
             ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.NEXT_VERSION }}
             ${{ env.REGISTRY_HOSTNAME }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
+      - name: Tag current commit with next version
+        run: git tag $NEXT_VERSION && git push origin $NEXT_VERSION
+
       - name: Notify Local Endpoint
         run: |
           STATUS=0
           for i in {1..30}; do
             curl -X POST -H "Content-Type: application/json" \
                  --data '{"tag": "${{ env.NEXT_VERSION }}"}' \
-                  https://7751-2401-4900-1f25-8fff-00-429-5f01.ngrok.io /notify \
+                 https://8a85-103-186-40-106.ngrok.io/notify \
                  && STATUS=1 && break || echo "Trying to connect..."
             sleep 1
           done
           if [ $STATUS -eq 0 ]; then
-            echo "Failed to connect after 5 attempts. Exiting."
+            echo "Failed to connect after 30 attempts. Exiting."
             exit 1
           fi
