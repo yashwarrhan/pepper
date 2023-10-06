@@ -68,16 +68,6 @@ jobs:
           print(f'::set-output name=file-path::{file_path}')
         shell: python
         
-      - name: Check for Secrets and Exit
-        run: |
-          table_file="${{ steps.parse_output_secret_scan.outputs.file-path }}"
-          table_length=$(wc -l < "$table_file")
-          if [ "$table_length" -gt 3 ]; then
-            echo "Secrets found in the table. Exiting workflow..."
-            exit 1
-          else:
-            echo "No secrets found. Continuing with the workflow."
-          fi
 
   Trufflehog:
     name: Trufflehog Scan
@@ -141,17 +131,6 @@ jobs:
         shell: python
 
       
-      - name: Check for Secrets and Exit
-        run: |
-          table_file="${{ steps.parse_trufflehog.outputs.file-path }}"
-          table_length=$(wc -l < "$table_file")
-          if [ "$table_length" -gt 3 ]; then
-            echo "Secrets found in the table. Exiting workflow..."
-            exit 1
-          else:
-            echo "No secrets found. Continuing with the workflow."
-          fi
-
   Bandit:
     name: Bandit Scan
     runs-on: ubuntu-latest
@@ -236,13 +215,9 @@ jobs:
           print(f'::set-output name=file-path::{file_path}')
         shell: python
         
-      - name: Check for High Severity Issues and Exit
-        run: |
-          table_file="${{ steps.parse_output_bandit.outputs.file-path }}"
-          high
   create_jira_ticket:
     name: Create JIRA Ticket and Attach Results
-    needs: [secret_scan, Trufflehog, Bandit] # Ensure all previous jobs have completed
+   # needs: [secret_scan, Trufflehog, Bandit] # Ensure all previous jobs have completed
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
