@@ -216,10 +216,11 @@ jobs:
               file.write(tabulate(sorted_rows, headers=table_headers, tablefmt='grid'))
           print(f'::set-output name=file-path::{file_path}')
         shell: python
+
         
-  create_jira_ticket:
-    name: Create JIRA Ticket and Attach Results
-    needs: [secret_scan, Trufflehog, Bandit] # Ensure all previous jobs have completed
+  compare_and_create_jira_ticket:
+    name: Compare Results and Create JIRA Ticket if Different
+    needs: [secret_scan, Trufflehog, Bandit]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -233,12 +234,28 @@ jobs:
           echo "\n\n---\n\n" >> combined_results.txt
           cat "${{ steps.parse_output_bandit.outputs.file-path }}" >> combined_results.txt
 
-      - name: Create Jira issue
-        id: create_jira_issue
+      - name: Compare reports
+        id: compare
+        run: |
+          if [[ "${{ needs.check_previous_results.outputs.previous_exists }}" == "true" ]]; then
+            DIFF=$(diff -q combined_results.txt previous_results.txt)
+            if [[ "$DIFF" != "" ]]; then
+              echo "There are differences between the current and previous scan results."
+              echo "::set-output name=differences_exist::true"
+            else
+              echo "No differences found between the current and previous scan results."
+              echo "::set-output name=differences_exist::false"
+            fi
+          else
+            echo "::set-output name=differences_exist::true"
+          fi
+
+      - name: Create Jira issue if there are differences
+        if: steps.compare.outputs.differences_exist == 'true'
         run: |
           JIRA_BASE_URL="https://yashwarrdhangautam.atlassian.net"
           JIRA_USERNAME="yashwarrdhangautam@gmail.com"
-          JIRA_API_TOKEN="YOUR_TOKEN_HERE"
+          JIRA_API_TOKEN="${{ secrets.JIRA_API_TOKEN }}"
           JIRA_PROJECT_KEY="SECURITY"
           JIRA_ISSUE_TYPE="Task"
           ISSUE_SUMMARY="Security Scan Results"
@@ -250,23 +267,9 @@ jobs:
               "issuetype": {"name": "'"$JIRA_ISSUE_TYPE"'"}
             }
           }')
-
           JIRA_RESPONSE=$(curl -s -X POST "$JIRA_BASE_URL/rest/api/2/issue" \
             -u "$JIRA_USERNAME:$JIRA_API_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$ISSUE_PAYLOAD")
-
           ISSUE_KEY=$(echo "$JIRA_RESPONSE" | jq -r '.key')
           echo "::set-output name=issue-key::$ISSUE_KEY"
-
-      - name: Attach combined report to Jira issue
-        run: |
-          JIRA_BASE_URL="https://yashwarrdhangautam.atlassian.net"
-          JIRA_USERNAME="yashwarrdhangautam@gmail.com"
-          JIRA_API_TOKEN="YOUR_TOKEN_HERE"
-          ISSUE_KEY="${{ steps.create_jira_issue.outputs.issue-key }}"
-
-          curl -s -X POST "$JIRA_BASE_URL/rest/api/2/issue/$ISSUE_KEY/attachments" \
-            -u "$JIRA_USERNAME:$JIRA_API_TOKEN" \
-            -H "X-Atlassian-Token: no-check" \
-            -F "file=@combined_results.txt"
