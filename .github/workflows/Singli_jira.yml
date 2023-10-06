@@ -71,6 +71,7 @@ jobs:
 
   Trufflehog:
     name: Trufflehog Scan
+    needs: secret_scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -133,6 +134,7 @@ jobs:
       
   Bandit:
     name: Bandit Scan
+    needs: Trufflehog
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -217,7 +219,7 @@ jobs:
         
   create_jira_ticket:
     name: Create JIRA Ticket and Attach Results
-   # needs: [secret_scan, Trufflehog, Bandit] # Ensure all previous jobs have completed
+    needs: [secret_scan, Trufflehog, Bandit] # Ensure all previous jobs have completed
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
