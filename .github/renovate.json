@@ -3,7 +3,7 @@
   "extends": ["config:base"],
   "timezone": "Europe/London",
   "labels": ["dependency", "renovate"],
-  "assignees": ["your-github-username"],
+  "assignees": ["yashwarrhan"],
   "schedule": ["every weekend"],
   "dependencyDashboard": true,
   "rebaseWhen": "conflicted",
