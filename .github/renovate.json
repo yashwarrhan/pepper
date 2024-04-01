@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "timezone": "Europe/London",
+  "labels": ["dependency", "renovate"],
+  "assignees": ["your-github-username"],
+  "schedule": ["every weekend"],
+  "dependencyDashboard": true,
+  "rebaseWhen": "conflicted",
+  "automerge": true,
+  "packageRules": [
+    {
+      "updateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "languages": ["javascript", "typescript"],
+      "schedule": ["every weekday after 10pm", "before 5am"]
+    },
+    {
+      "depTypeList": ["devDependencies"],
+      "automerge": false,
+      "schedule": ["on the first day of the month"]
+    },
+    {
+      "updateTypes": ["major"],
+      "labels": ["major", "breaking-change"],
+      "automerge": false
+    }
+  ]
+}
