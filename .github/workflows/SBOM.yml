@@ -1,4 +1,4 @@
-name: Generate SBOM for Python Project, Display, Upload Tabular Artifact, and Upload to Dependency-Track
+name: Generate SBOM, Scan Vulnerabilities with Safety, and Upload Artifacts
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - master # Adjust this as needed for your project
 
 jobs:
-  sbom-generation:
+  sbom-and-safety-scan:
     runs-on: ubuntu-latest
     
     steps:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8' # Adjust the Python version as necessary for your project
+          python-version: '3.8' # Adjust as necessary for your project
 
       # Install system dependencies required for the Python project
       - name: Install system dependencies
@@ -64,15 +64,8 @@ jobs:
           name: sbom-tabular-artifact
           path: sbom_table.txt
 
-      # Upload SBOM to Dependency-Track
-      - name: Upload SBOM to Dependency-Track
-        uses: DependencyTrack/gh-upload-sbom@v2.0.0
-        with:
-          protocol: http # Adjust as needed
-          serverHostname: 'your_dependency_track_host' # Change this to your Dependency-Track server hostname
-          port: 'your_dependency_track_port' # Change this to your Dependency-Track server port, if not the default HTTPS/HTTP port
-          apiKey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
-          projectName: 'Test Project'
-          projectVersion: '1.0'
-          bomFilename: './bom.json'
-          autoCreate: true
+      # Run Safety to check for vulnerabilities
+      - name: Check for vulnerabilities with Safety
+        run: |
+          pip install safety
+          safety check --full-report
