@@ -1,4 +1,4 @@
-name: Generate SBOM for Python Project, Display and Upload Tabular Artifact
+name: Generate SBOM for Python Project, Display, Upload Tabular Artifact, and Upload to Dependency-Track
 
 on:
   push:
@@ -47,7 +47,6 @@ jobs:
           python - <<EOF
           import json
           from tabulate import tabulate
-
           with open('bom.json') as bom_file:
               bom = json.load(bom_file)
               components = bom.get('components', [])
@@ -64,3 +63,16 @@ jobs:
         with:
           name: sbom-tabular-artifact
           path: sbom_table.txt
+
+      # Upload SBOM to Dependency-Track
+      - name: Upload SBOM to Dependency-Track
+        uses: DependencyTrack/gh-upload-sbom@v2.0.0
+        with:
+          protocol: http # Adjust as needed
+          serverHostname: 'your_dependency_track_host' # Change this to your Dependency-Track server hostname
+          port: 'your_dependency_track_port' # Change this to your Dependency-Track server port, if not the default HTTPS/HTTP port
+          apiKey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+          projectName: 'Test Project'
+          projectVersion: '1.0'
+          bomFilename: './bom.json'
+          autoCreate: true
