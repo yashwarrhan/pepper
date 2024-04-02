@@ -8,10 +8,10 @@ on:
 jobs:
   sbom-generation:
     runs-on: ubuntu-latest
-
+    
     steps:
       - uses: actions/checkout@v2
-
+      
       # Set up the Python environment
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -22,23 +22,16 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libkrb5-dev
 
-      # Set up the virtual environment (optional, can be used to isolate dependencies)
-      - name: Set up virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-
-      # Install Python dependencies from the requirements.txt file, if present
-      - name: Install dependencies
+      # Install Python dependencies and tabulate library
+      - name: Install dependencies and tabulate
         run: |
           python -m pip install --upgrade pip
+          pip install tabulate
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       # Generate a full list of dependencies including transitive dependencies
       - name: Generate comprehensive requirements.txt
-        run: |
-          source venv/bin/activate
-          pip freeze > full_requirements.txt
+        run: pip freeze > full_requirements.txt
 
       # Generate Python SBOM using the CycloneDX Action
       - name: Generate Python SBOM
