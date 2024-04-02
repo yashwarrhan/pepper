@@ -1,4 +1,4 @@
-name: Full Workflow - SBOM, Safety Scan, and Upload Artifacts
+name: Comprehensive Python Project Analysis with SBOM and Safety Scan
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - master # Adjust this as needed for your project
 
 jobs:
-  comprehensive-python-project-analysis:
+  analysis:
     runs-on: ubuntu-latest
     
     steps:
@@ -15,12 +15,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8'
+          python-version: '3.8' # Adjust as necessary
 
-      - name: Install system and Kerberos development libraries
+      - name: Install Kerberos development libraries
         run: sudo apt-get update && sudo apt-get install -y libkrb5-dev
 
-      - name: Install Python dependencies, tabulate, and safety
+      - name: Install Python dependencies and tabulate
         run: |
           python -m pip install --upgrade pip
           pip install tabulate safety
@@ -42,41 +42,55 @@ jobs:
           import json
           from tabulate import tabulate
           with open('bom.json') as bom_file:
-              bom = json.load(bom_file)
-              components = bom.get('components', [])
+              data = json.load(bom_file)
+              components = data.get('components', [])
               headers = ['Name', 'Version', 'PURL']
               table_data = [(comp.get('name'), comp.get('version'), comp.get('purl')) for comp in components]
               table = tabulate(table_data, headers, tablefmt='github')
-              print(table)
               with open('sbom_table.txt', 'w') as table_file:
                   table_file.write(table)
           EOF
 
       - uses: actions/upload-artifact@v2
         with:
-          name: sbom-tabular-artifact
+          name: SBOM-Table
           path: sbom_table.txt
 
-      - name: Run Safety for vulnerability scanning
+      - name: Run Safety and generate report
+        run: safety check --json > safety_results.json
+
+      - name: Generate vulnerability table from Safety JSON
         run: |
-          safety check --json > safety_results.json
-          python - <<EOF
+          cat > generate_table.py << EOF
           import json
           from tabulate import tabulate
-          with open('safety_results.json') as json_file:
-              data = json.load(json_file)
-              if not data:
-                  print("No vulnerabilities found.")
-              else:
-                  headers = ['Package', 'Affected', 'Installed', 'Description', 'ID']
-                  table_data = [(issue['package'], issue.get('vulnerable_versions'), issue.get('installed_version'), issue.get('advisory'), issue.get('cve']) for issue in data]
-                  table = tabulate(table_data, headers=headers, tablefmt='github')
-                  print(table)
-                  with open('safety_vulnerabilities_table.txt', 'w') as table_file:
-                      table_file.write(table)
+          try:
+              with open('safety_results.json') as json_file:
+                  data = json.load(json_file)
+                  if not data or 'issues' not in data:
+                      print("No vulnerabilities found.")
+                  else:
+                      vulnerabilities = data['issues'] if 'issues' in data else data
+                      headers = ['Package', 'Affected', 'Installed', 'Description', 'ID']
+                      table_data = [
+                          (
+                              issue.get('package'),
+                              ', '.join(issue.get('vulnerable_versions', [])),
+                              issue.get('installed_version'),
+                              issue.get('advisory'),
+                              issue.get('cve', 'N/A')
+                          )
+                          for issue in vulnerabilities
+                      ]
+                      table = tabulate(table_data, headers=headers, tablefmt='github')
+                      with open('safety_vulnerabilities_table.txt', 'w') as table_file:
+                          table_file.write(table)
+          except Exception as e:
+              print(f"Error processing safety results: {e}")
           EOF
+          python generate_table.py
 
       - uses: actions/upload-artifact@v2
         with:
-          name: safety-vulnerabilities-tabular-artifact
+          name: Safety-Vulnerabilities-Table
           path: safety_vulnerabilities_table.txt
