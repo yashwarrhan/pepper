@@ -1,7 +1,7 @@
 name: SBOM and Vulnerability Scan
 
 on:
-  push: # Adjust this trigger as needed
+  push: # Adjust this trigger as needed (e.g., remove workflow_dispatch)
 
 jobs:
   sbom-and-vulnerability-scan:
@@ -39,33 +39,23 @@ jobs:
           output: ./bom.json
           format: json
 
-      # Parse the SBOM JSON and create a tabular output
+      # Parse the SBOM JSON and create a tabular output, then save to a file
       - name: Parse SBOM and Create Table
         run: |
-          python - <<EOF
-          import json
-          from tabulate import tabulate
-          with open('bom.json') as bom_file:
-              data = json.load(bom_file)
-              components = data.get('components', [])
-              table = tabulate(components, headers='keys', tablefmt='github')
-              print(table)
-          EOF
-          # Save the table output to a file
-          python -c "import json; from tabulate import tabulate; with open('bom.json') as bom_file: data = json.load(bom_file); components = data.get('components', []); table = tabulate(components, headers='keys', tablefmt='github'); print(table)" > sbom_table.txt
+          python -c "import json; from tabulate import tabulate; with open('bom.json') as bom_file: data = json.load(bom_file); components = data.get('components', []); table = tabulate(components, headers='keys', tablefmt='github'); print(table); with open('sbom_table.txt', 'w') as f: f.write(table)"
 
       # Scan for vulnerabilities using safety
       - name: Scan for vulnerabilities
         run: |
           safety check --full-report --with-json ./full_requirements.txt > vulnerabilities.json
 
-      # Upload SBOM tabular artifact (optional)
+      # Upload SBOM tabular artifact
       - uses: actions/upload-artifact@v2
         with:
           name: sbom-tabular-artifact
           path: sbom_table.txt
 
-      # Upload vulnerability report (optional)
+      # Upload vulnerability report
       - uses: actions/upload-artifact@v2
         with:
           name: vulnerability-report
