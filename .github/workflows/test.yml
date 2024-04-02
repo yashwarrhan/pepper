@@ -39,10 +39,20 @@ jobs:
           output: ./bom.json
           format: json
 
-      # Parse the SBOM JSON and create a tabular output, then save to a file
       - name: Parse SBOM and Create Table
         run: |
-          python -c "import json; from tabulate import tabulate; with open('bom.json') as bom_file: data = json.load(bom_file); components = data.get('components', []); table = tabulate(components, headers='keys', tablefmt='github'); print(table); with open('sbom_table.txt', 'w') as f: f.write(table)"
+          python - <<EOF
+          import json
+          from tabulate import tabulate
+          with open('bom.json') as bom_file:
+              data = json.load(bom_file)
+              components = data.get('components', [])
+              table = tabulate(components, headers='keys', tablefmt='github')
+              print(table)
+              with open('sbom_table.txt', 'w') as f:
+                  f.write(table)
+          EOF
+
 
       # Scan for vulnerabilities using safety
       - name: Scan for vulnerabilities
