@@ -40,16 +40,20 @@ jobs:
       # Parse the SBOM JSON and create a tabular output
       - name: Parse SBOM and Create Table
         run: |
-          python -c "import json; from tabulate import tabulate; \
-          with open('bom.json') as bom_file: \
-            bom = json.load(bom_file); \
-            components = bom.get('components', []); \
-            headers = ['Name', 'Version', 'PURL']; \
-            table_data = [(comp.get('name'), comp.get('version'), comp.get('purl')) for comp in components]; \
-            table = tabulate(table_data, headers, tablefmt='github'); \
-            print(table); \
-            with open('sbom_table.txt', 'w') as table_file: \
-              table_file.write(table)"
+          python - <<EOF
+          import json
+          from tabulate import tabulate
+
+          with open('bom.json') as bom_file:
+              bom = json.load(bom_file)
+              components = bom.get('components', [])
+              headers = ['Name', 'Version', 'PURL']
+              table_data = [(comp.get('name'), comp.get('version'), comp.get('purl')) for comp in components]
+              table = tabulate(table_data, headers, tablefmt='github')
+              print(table)
+              with open('sbom_table.txt', 'w') as table_file:
+                  table_file.write(table)
+          EOF
       
       # Upload the tabular SBOM as an artifact
       - uses: actions/upload-artifact@v2
