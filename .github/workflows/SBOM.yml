@@ -32,9 +32,9 @@ jobs:
       - name: Install CycloneDX
         run: pip install cyclonedx-bom
       
-      # Generate SBOM
+      # Generate SBOM based on the requirements file
       - name: Generate SBOM
-        run: cyclonedx-py -o bom.xml
+        run: cyclonedx-py -o bom.xml requirements
         
       # Upload the generated SBOM as an artifact
       - uses: actions/upload-artifact@v2
