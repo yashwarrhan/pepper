@@ -1,97 +1,61 @@
-name: Generate SBOM, Scan Vulnerabilities, and Upload Reports
+name: Safety Vulnerability Scan and HTML Report
 
 on:
   push:
     branches:
-      - master # Adjust this as needed for your project
+      - master
 
 jobs:
-  sbom-and-vulnerability-scan:
+  safety-scan-and-html-report:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      # Set up the Python environment
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8' # Adjust the Python version as necessary for your project
+          python-version: '3.8'
 
-      # Install system dependencies required for the Python project
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libkrb5-dev
-
-      # Install Python dependencies and the tabulate library
-      - name: Install dependencies and tabulate
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install tabulate safety
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install safety
 
-      # Generate a full list of dependencies including transitive dependencies
-      - name: Generate comprehensive requirements.txt
-        run: pip freeze > full_requirements.txt
-
-      # Generate Python SBOM using the CycloneDX Action
-      - name: Generate Python SBOM
-        uses: CycloneDX/gh-python-generate-sbom@v2
-        with:
-          input: ./full_requirements.txt
-          output: ./bom.json
-          format: json
-
-      # Parse the SBOM JSON and create a tabular output
-      - name: Parse SBOM and Create Table
-        run: |
-          python - <<EOF
-          import json
-          from tabulate import tabulate
-          with open('bom.json') as bom_file:
-              data = json.load(bom_file)
-              components = data.get('components', [])
-              table = tabulate(components, headers='keys', tablefmt='github')
-              print(table)
-              with open('sbom_table.txt', 'w') as table_file:
-                  table_file.write(table)
-          EOF
-
-      # Upload the SBOM tabular artifact
-      - uses: actions/upload-artifact@v2
-        with:
-          name: sbom-tabular-artifact
-          path: sbom_table.txt
-
-      # Run Safety and output to JSON
-      - name: Run Safety and output to JSON
+      - name: Generate Safety report in JSON
         run: |
           safety check --json > safety_report.json
 
-      # Convert Safety JSON to table
-      - name: Convert Safety JSON to table
+      - name: Convert Safety JSON to HTML
         run: |
           python - <<EOF
           import json
-          from tabulate import tabulate
+
           with open('safety_report.json') as json_file:
               data = json.load(json_file)
-              vulnerabilities = data.get('vulnerabilities', [])
-              if vulnerabilities:
-                  headers = ['Package', 'Affected', 'Installed', 'Description', 'ID']
-                  table_data = [(vuln['package'], vuln['vulnerable_spec'], vuln['installed_version'],
-                                 vuln['description'], vuln.get('cve') or 'N/A') for vuln in vulnerabilities]
-                  table = tabulate(table_data, headers, tablefmt='github')
-                  print(table)
-                  with open('safety_table.txt', 'w') as table_file:
-                      table_file.write(table)
-              else:
-                  print("No vulnerabilities found.")
-                  with open('safety_table.txt', 'w') as table_file:
-                      table_file.write("No vulnerabilities found.")
+          
+          vulnerabilities = data.get('vulnerabilities', [])
+
+          html_output = "<html><head><title>Safety Report</title></head><body>"
+          html_output += "<h1>Safety Vulnerability Report</h1>"
+
+          if vulnerabilities:
+              html_output += "<table border='1'><tr><th>Package</th><th>Affected</th><th>Installed</th><th>Description</th><th>More Info</th></tr>"
+              for vuln in vulnerabilities:
+                  html_output += f"<tr><td>{vuln['package']}</td><td>{vuln['vulnerable_spec']}</td><td>{vuln['installed_version']}</td><td>{vuln['description']}</td><td><a href='{vuln['advisory']}'>Advisory</a></td></tr>"
+              html_output += "</table>"
+          else:
+              html_output += "<p>No vulnerabilities found.</p>"
+
+          html_output += "</body></html>"
+
+          with open('safety_report.html', 'w') as html_file:
+              html_file.write(html_output)
           EOF
 
-      # Upload the Safety report tabular artifact
-      - uses: actions/upload-artifact@v2
+      - name: Upload HTML report as artifact
+        uses: actions/upload-artifact@v2
         with:
-          name: safety-report-tabular
-          path: safety_table.txt
+          name: safety-html-report
+          path: safety_report.html
