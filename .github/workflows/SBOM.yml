@@ -8,35 +8,46 @@ on:
 jobs:
   sbom-generation:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v2
-      
+
       # Set up the Python environment
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.8' # Adjust the Python version as necessary for your project
-      
+
       # Install system dependencies required for the Python project
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libkrb5-dev
-      
-      # Install Python dependencies and tabulate library
-      - name: Install dependencies and tabulate
+
+      # Set up the virtual environment (optional, can be used to isolate dependencies)
+      - name: Set up virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+
+      # Install Python dependencies from the requirements.txt file, if present
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install tabulate
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      
+
+      # Generate a full list of dependencies including transitive dependencies
+      - name: Generate comprehensive requirements.txt
+        run: |
+          source venv/bin/activate
+          pip freeze > full_requirements.txt
+
       # Generate Python SBOM using the CycloneDX Action
       - name: Generate Python SBOM
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
-          input: ./requirements.txt
+          input: ./full_requirements.txt
           output: ./bom.json
           format: json
-      
+
       # Parse the SBOM JSON and create a tabular output
       - name: Parse SBOM and Create Table
         run: |
@@ -54,7 +65,7 @@ jobs:
               with open('sbom_table.txt', 'w') as table_file:
                   table_file.write(table)
           EOF
-      
+
       # Upload the tabular SBOM as an artifact
       - uses: actions/upload-artifact@v2
         with:
