@@ -27,17 +27,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      
-      # Install CycloneDX for Python
-      - name: Install CycloneDX
-        run: pip install cyclonedx-bom
-      
-      # Generate SBOM based on the requirements file
-      - name: Generate SBOM
-        run: cyclonedx-py -o bom.xml requirements
+
+      # Generate Python SBOM using the CycloneDX Action
+      - name: Generate Python SBOM
+        uses: CycloneDX/gh-python-generate-sbom@v2
+        with:
+          input: ./requirements.txt
+          output: ./bom.json
+          format: json
         
       # Upload the generated SBOM as an artifact
       - uses: actions/upload-artifact@v2
         with:
           name: python-sbom-artifact
-          path: bom.xml
+          path: bom.json
