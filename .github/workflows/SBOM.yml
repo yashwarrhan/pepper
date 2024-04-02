@@ -8,10 +8,10 @@ on:
 jobs:
   sbom-and-vulnerability-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v2
-      
+
       # Set up the Python environment
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -48,11 +48,9 @@ jobs:
           import json
           from tabulate import tabulate
           with open('bom.json') as bom_file:
-              bom = json.load(bom_file)
-              components = bom.get('components', [])
-              headers = ['Name', 'Version', 'PURL']
-              table_data = [(comp.get('name'), comp.get('version'), comp.get('purl')) for comp in components]
-              table = tabulate(table_data, headers, tablefmt='github')
+              data = json.load(bom_file)
+              components = data.get('components', [])
+              table = tabulate(components, headers='keys', tablefmt='github')
               print(table)
               with open('sbom_table.txt', 'w') as table_file:
                   table_file.write(table)
@@ -67,7 +65,7 @@ jobs:
       # Run Safety and output to JSON
       - name: Run Safety and output to JSON
         run: |
-          safety check --full-report --json > safety_report.json
+          safety check --json > safety_report.json
 
       # Convert Safety JSON to table
       - name: Convert Safety JSON to table
@@ -81,7 +79,7 @@ jobs:
               if vulnerabilities:
                   headers = ['Package', 'Affected', 'Installed', 'Description', 'ID']
                   table_data = [(vuln['package'], vuln['vulnerable_spec'], vuln['installed_version'],
-                                 vuln['description'], vuln['advisory']) for vuln in vulnerabilities]
+                                 vuln['description'], vuln.get('cve') or 'N/A') for vuln in vulnerabilities]
                   table = tabulate(table_data, headers, tablefmt='github')
                   print(table)
                   with open('safety_table.txt', 'w') as table_file:
