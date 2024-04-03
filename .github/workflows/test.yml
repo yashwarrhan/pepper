@@ -10,13 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      # Set up the Python environment
+      # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8' # Adjust the Python version as necessary
+          python-version: '3.8'
 
-      # Install system dependencies required for the Python project
+      # Install system dependencies
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libkrb5-dev
 
@@ -27,11 +27,11 @@ jobs:
           pip install tabulate
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # Generate a full list of dependencies including transitive dependencies
+      # Generate full list of dependencies
       - name: Generate comprehensive requirements.txt
         run: pip freeze > full_requirements.txt
 
-      # Generate Python SBOM using the CycloneDX Action
+      # Generate Python SBOM
       - name: Generate Python SBOM
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
@@ -39,22 +39,20 @@ jobs:
           output: ./bom.json
           format: json
 
-      # Upload SBOM to Dependency-Track with curl
-      - name: Upload BOM to Dependency-Track with curl
+      # Upload SBOM to Dependency-Track
+      - name: Upload BOM to Dependency-Track
         run: |
           curl -k -X POST \
             --url 'http://164.52.193.50:8080/api/v1/bom' \
             -H 'X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}' \
-            -H 'Content-Type: multipart/form-data' \
             -F "projectName=test" \
             -F "projectVersion=1.0" \
             -F "autoCreate=true" \
             -F "bom=@bom.json"
-
         env:
           DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
 
-      # Parse SBOM and Create Table
+      # Parse SBOM and create table
       - name: Parse SBOM and Create Table
         run: |
           python - <<EOF
