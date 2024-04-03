@@ -43,10 +43,12 @@ jobs:
       - name: Upload BOM to Dependency-Track
         uses: DependencyTrack/gh-upload-sbom@v2.0.0
         with:
-          serverhostname: '164.52.193.50:8080' # Use your server's IP and port
+          serverhostname: '164.52.193.50:8080' # Ensure this matches your Dependency-Track server
           apikey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
           projectname: 'test'
           projectversion: '1.0'
+          bomfilename: 'bom.json' # This must match the file generated above
+          autocreate: true # Set to true if you want Dependency-Track to auto-create the project
 
       # Parse SBOM and Create Table
       - name: Parse SBOM and Create Table
