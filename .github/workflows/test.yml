@@ -1,7 +1,7 @@
 name: SBOM and Upload to Dependency Track
 
 on:
-  push: # Adjust this trigger as needed (e.g., remove workflow_dispatch)
+  push: # Adjust this trigger as needed
 
 jobs:
   sbom-and-upload:
@@ -14,7 +14,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8' # Adjust the Python version as necessary for your project
+          python-version: '3.8' # Adjust the Python version as necessary
 
       # Install system dependencies required for the Python project
       - name: Install system dependencies
@@ -39,16 +39,18 @@ jobs:
           output: ./bom.json
           format: json
 
-      # Upload SBOM to Dependency-Track
-      - name: Upload BOM to Dependency-Track
-        uses: DependencyTrack/gh-upload-sbom@v2.0.0
-        with:
-          serverhostname: 'http://164.52.193.50' # Ensure this matches your Dependency-Track server
-          apikey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
-          projectname: 'test'
-          projectversion: '1.0'
-          bomfilename: 'bom.json' # This must match the file generated above
-          autocreate: true # Set to true if you want Dependency-Track to auto-create the project
+      # Upload SBOM to Dependency-Track with curl to bypass SSL validation
+      - name: Upload BOM to Dependency-Track with curl
+        run: |
+          curl -k -X 'POST' \
+            --url 'https://164.52.193.50/api/v1/bom' \
+            -H 'X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}' \
+            -F "autoCreate=true" \
+            -F "projectName=test" \
+            -F "projectVersion=1.0" \
+            -F "bom=@bom.json"
+        env:
+          DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
 
       # Parse SBOM and Create Table
       - name: Parse SBOM and Create Table
