@@ -1,0 +1,58 @@
+name: XML SBOM
+on:
+  push: 
+
+jobs:
+  sbom-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      # Install system dependencies
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libkrb5-dev
+
+      # Install Python dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # Generate full list of dependencies
+      - name: Generate comprehensive requirements.txt
+        run: pip freeze > full_requirements.txt
+
+      # Generate Python SBOM in XML format
+      - name: Generate Python SBOM
+        uses: CycloneDX/gh-python-generate-sbom@v2
+        with:
+          input: ./full_requirements.txt
+          output: ./bom.xml
+          format: xml
+
+      # Upload SBOM to Dependency-Track
+      - name: Upload BOM to Dependency-Track
+        run: |
+          curl -k -X "POST" \
+            --url "http://164.52.193.50:8080/api/v1/bom" \
+            -H 'X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}' \
+            -H 'Content-Type: multipart/form-data' \
+            -F "projectName=test" \
+            -F "projectVersion=1.0" \
+            -F "autoCreate=true" \
+            -F "bom=@bom.xml"
+        env:
+          DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+
+      # Upload SBOM XML artifact
+      - uses: actions/upload-artifact@v2
+        with:
+          name: sbom-xml-artifact
+          path: bom.xml
