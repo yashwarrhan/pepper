@@ -1,12 +1,10 @@
-name: XMLSBOM
-
+name: SBOMXML
 on:
   push: # Adjust this trigger as needed
 
 jobs:
   sbom-and-upload:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
 
@@ -26,31 +24,22 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # Generate full list of dependencies
-      - name: Generate comprehensive requirements.txt
-        run: pip freeze > full_requirements.txt
-
       # Generate Python SBOM in XML format
       - name: Generate Python SBOM
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
-          input: ./full_requirements.txt
-          output: ./bom.xml
+          input: requirements.txt
+          output: bom.xml
           format: xml
-
-      # Encode SBOM to Base64
-      - name: Encode SBOM to Base64
-        run: |
-          bom=$(base64 -w 0 bom.xml)
-          echo "ENCODED_BOM=$bom" >> $GITHUB_ENV
 
       # Upload SBOM to Dependency-Track
       - name: Upload BOM to Dependency-Track
         run: |
+          BOM_ENCODED=$(base64 -w 0 bom.xml)
           curl -k -X "PUT" \
             --url "http://164.52.193.50:8080/api/v1/bom" \
-            -H 'X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}' \
-            -H 'Content-Type: application/json' \
-            -d "{\"bom\": \"${{ env.ENCODED_BOM }}\", \"projectName\": \"test\", \"projectVersion\": \"1.0\", \"autoCreate\": true}"
+            -H "X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"project\":\"9fc512c7-f293-461b-b07c-19c74d13f00d\",\"bom\":\"$BOM_ENCODED\"}"
         env:
           DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
