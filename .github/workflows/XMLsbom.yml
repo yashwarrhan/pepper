@@ -1,6 +1,7 @@
-name: XML SBOM
+name: XMLSBOM
+
 on:
-  push: 
+  push: # Adjust this trigger as needed
 
 jobs:
   sbom-and-upload:
@@ -37,22 +38,19 @@ jobs:
           output: ./bom.xml
           format: xml
 
+      # Encode SBOM to Base64
+      - name: Encode SBOM to Base64
+        run: |
+          bom=$(base64 -w 0 bom.xml)
+          echo "ENCODED_BOM=$bom" >> $GITHUB_ENV
+
       # Upload SBOM to Dependency-Track
       - name: Upload BOM to Dependency-Track
         run: |
-          curl -k -X "POST" \
+          curl -k -X "PUT" \
             --url "http://164.52.193.50:8080/api/v1/bom" \
             -H 'X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}' \
-            -H 'Content-Type: multipart/form-data' \
-            -F "projectName=test" \
-            -F "projectVersion=1.0" \
-            -F "autoCreate=true" \
-            -F "bom=@bom.xml"
+            -H 'Content-Type: application/json' \
+            -d "{\"bom\": \"${{ env.ENCODED_BOM }}\", \"projectName\": \"test\", \"projectVersion\": \"1.0\", \"autoCreate\": true}"
         env:
           DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
-
-      # Upload SBOM XML artifact
-      - uses: actions/upload-artifact@v2
-        with:
-          name: sbom-xml-artifact
-          path: bom.xml
