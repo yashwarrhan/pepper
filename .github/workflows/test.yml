@@ -42,15 +42,16 @@ jobs:
       # Upload SBOM to Dependency-Track
       - name: Upload BOM to Dependency-Track
         run: |
-          curl -k -X POST \
-            --url 'http://164.52.193.50:8080/api/v1/bom' \
-            -H 'X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}' \
-            -F "projectName=test" \
-            -F "projectVersion=1.0" \
-            -F "autoCreate=true" \
-            -F "bom=@bom.json"
+          curl -k -X 'POST' \
+            'http://164.52.193.50:8080/api/v1/bom' \
+            -H 'X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_APIKEY }}' \
+            -H 'Content-Type: multipart/form-data' \
+            -F 'projectName=test' \
+            -F 'projectVersion=1.0' \
+            -F 'autoCreate=true' \
+            -F 'bom=@./bom.json'
         env:
-          DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+          DEPENDENCY_TRACK_APIKEY: ${{ secrets.DEPENDENCY_TRACK_APIKEY }}
 
       # Parse SBOM and create table
       - name: Parse SBOM and Create Table
