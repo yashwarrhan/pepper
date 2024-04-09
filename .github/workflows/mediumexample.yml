@@ -23,7 +23,7 @@ jobs:
 
       - name: Generate BOM File
         run: |
-          cyclonedx-py -o bom.xml  # Replace with the correct command to generate the BOM file.
+          cyclonedx-py requirements -o bom.xml
 
       - name: Upload BOM to Dependency-Track
         env:
