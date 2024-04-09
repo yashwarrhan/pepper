@@ -43,7 +43,7 @@ jobs:
       - name: Upload BOM to Dependency-Track
         run: |
           curl -k -X 'POST' \
-            'http://164.52.193.50:8080/api/v1/bom' \
+            'http://164.52.193.50:8081/api/v1/bom' \
             -H 'X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_APIKEY }}' \
             -H 'Content-Type: multipart/form-data' \
             -F 'projectName=test' \
