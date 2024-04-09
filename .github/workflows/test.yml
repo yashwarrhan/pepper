@@ -3,58 +3,63 @@ on:
   push: # Trigger the workflow on push events
 
 jobs:
-  sbom-and-upload:
-    runs-on: ubuntu-latest # Run on the latest Ubuntu version
+  sbom-upload:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2 # Check out the current repository
+        uses: actions/checkout@v2
 
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2 # Set up Python environment
+        uses: actions/setup-python@v2
         with:
-          python-version: '3.8' # Specify the Python version
+          python-version: '3.8'
 
-      - name: Install System Dependencies
-        run: sudo apt-get update && sudo apt-get install -y libkrb5-dev # Install system dependencies
-
-      - name: Install Python Dependencies
+      - name: Install Dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi # Install Python dependencies
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Generate Python SBOM (XML)
+      - name: Generate SBOM (XML)
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
           input: requirements.txt
           output: bom.xml
           format: xml
 
-      - name: Generate Python SBOM (JSON)
+      - name: Generate SBOM (JSON)
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
           input: requirements.txt
           output: bom.json
           format: json
 
-      - name: Upload XML SBOM to Dependency-Track
-        uses: DependencyTrack/gh-upload-bom-to-dependency-track@v1.0.0
-        with:
-          serverhostname: '164.52.193.50:8081'
-          apikey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
-          projectname: 'New Project Name'
-          projectversion: '1.0'
-          bomfile: 'bom.xml'
-          port: 8081
+      - name: Upload SBOMs to Dependency-Track
+        run: |
+          DEPENDENCY_TRACK_URL="http://your_dependency_track_server_address:port/api/v1/bom"
+          API_KEY="${{ secrets.DEPENDENCYTRACK_APIKEY }}"
+          PROJECT_UUID="your_project_uuid"
 
-      - name: Upload JSON SBOM to Dependency-Track
-        uses: DependencyTrack/gh-upload-bom-to-dependency-track@v1.0.0
-        with:
-          serverhostname: '164.52.193.50:8081'
-          apikey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
-          projectname: 'New Project Name'
-          projectversion: '1.0'
-          bomfile: 'bom.json'
-          port: 8081
+          for BOM_FILE in bom.xml bom.json; do
+            echo "Uploading $BOM_FILE to Dependency-Track"
+            BOM_ENCODED=$(base64 -w 0 $BOM_FILE)
+            RESPONSE=$(curl -k -X "POST" \
+              --url "$DEPENDENCY_TRACK_URL" \
+              -H "X-Api-Key: $API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"project\":\"$PROJECT_UUID\",\"bom\":\"$BOM_ENCODED\"}" \
+              -w "%{http_code}" -o response.txt -s)
+              
+            if [ "$RESPONSE" -ne 200 ]; then
+              echo "Failed to upload $BOM_FILE. HTTP Status: $RESPONSE"
+              echo "Response body:"
+              cat response.txt
+              exit 1
+            else
+              echo "$BOM_FILE uploaded successfully."
+            fi
+          done
 
       - name: Archive SBOM Artifacts
         uses: actions/upload-artifact@v2
