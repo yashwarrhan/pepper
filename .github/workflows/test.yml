@@ -37,46 +37,24 @@ jobs:
           format: json
 
       - name: Upload XML SBOM to Dependency-Track
-        id: upload_xml
-        run: |
-          PROJECT_UUID="9fc512c7-f293-461b-b07c-19c74d13f00d"
-          BOM_FILE="bom.xml"
-          BOM_ENCODED=$(base64 -w 0 $BOM_FILE)
-          HTTP_RESPONSE=$(curl -k -X "POST" \
-            --url "http://164.52.193.50:8081/api/v1/bom" \
-            -H "X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"project\":\"$PROJECT_UUID\",\"bom\":\"$BOM_ENCODED\"}" \
-            -o response_xml.txt -s -w "%{http_code}")
-          if [ "$HTTP_RESPONSE" -ne 200 ]; then
-            echo "Failed to upload XML SBOM. HTTP Status: $HTTP_RESPONSE"
-            cat response_xml.txt
-            exit 1
-          fi
-          echo "XML SBOM uploaded successfully."
-        env:
-          DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+        uses: DependencyTrack/gh-upload-bom-to-dependency-track@v1.0.0
+        with:
+          serverhostname: '164.52.193.50:8081'
+          apikey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+          projectname: 'New Project Name'
+          projectversion: '1.0'
+          bomfile: 'bom.xml'
+          port: 8081
 
       - name: Upload JSON SBOM to Dependency-Track
-        if: steps.upload_xml.outcome == 'success'
-        run: |
-          PROJECT_UUID="9fc512c7-f293-461b-b07c-19c74d13f00d"
-          BOM_FILE="bom.json"
-          BOM_ENCODED=$(base64 -w 0 $BOM_FILE)
-          HTTP_RESPONSE=$(curl -k -X "POST" \
-            --url "http://164.52.193.50:8081/api/v1/bom" \
-            -H "X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"project\":\"$PROJECT_UUID\",\"bom\":\"$BOM_ENCODED\"}" \
-            -o response_json.txt -s -w "%{http_code}")
-          if [ "$HTTP_RESPONSE" -ne 200 ]; then
-            echo "Failed to upload JSON SBOM. HTTP Status: $HTTP_RESPONSE"
-            cat response_json.txt
-            exit 1
-          fi
-          echo "JSON SBOM uploaded successfully."
-        env:
-          DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+        uses: DependencyTrack/gh-upload-bom-to-dependency-track@v1.0.0
+        with:
+          serverhostname: '164.52.193.50:8081'
+          apikey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+          projectname: 'New Project Name'
+          projectversion: '1.0'
+          bomfile: 'bom.json'
+          port: 8081
 
       - name: Archive SBOM Artifacts
         uses: actions/upload-artifact@v2
