@@ -1,16 +1,16 @@
-name: SBOM Upload Workflow
+name: SBOM Generation, Upload, and Failure Handling
 on:
   push:
 
 jobs:
-  generate-and-upload-sbom:
+  sbom-process:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
@@ -23,20 +23,18 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Generate SBOM (XML)
-        id: gen-xml
-        run: |
-          echo "Generating SBOM in XML format..."
-          # Your command to generate XML SBOM
-          # Placeholder for demonstration
-          echo "<sbom>Example XML SBOM</sbom>" > bom.xml
+        uses: CycloneDX/gh-python-generate-sbom@v2
+        with:
+          input: requirements.txt
+          output: bom.xml
+          format: xml
 
       - name: Generate SBOM (JSON)
-        id: gen-json
-        run: |
-          echo "Generating SBOM in JSON format..."
-          # Your command to generate JSON SBOM
-          # Placeholder for demonstration
-          echo '{"sbom": "Example JSON SBOM"}' > bom.json
+        uses: CycloneDX/gh-python-generate-sbom@v2
+        with:
+          input: requirements.txt
+          output: bom.json
+          format: json
 
       - name: Upload XML SBOM to Dependency-Track
         id: upload-xml
