@@ -22,23 +22,37 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi # Install Python dependencies
 
-      - name: Generate Python SBOM in XML format
+      - name: Generate Python SBOM
         uses: CycloneDX/gh-python-generate-sbom@v2 # Generate SBOM
         with:
           input: requirements.txt
           output: bom.xml
-          format: xml
+          format: xml # You can also use 'json' if you prefer JSON format
 
       - name: Upload SBOM to Dependency-Track
         run: |
-          PROJECT_NAME="test"
-          PROJECT_VERSION="1.0"
           PROJECT_UUID="9fc512c7-f293-461b-b07c-19c74d13f00d" # Use the UUID from the provided image
-          BOM_ENCODED=$(base64 -w 0 bom.xml)
-          curl -k -X "POST" \
+          BOM_FILE="bom.xml" # or "bom.json" if you generated JSON format
+          BOM_ENCODED=$(base64 -w 0 $BOM_FILE)
+          RESPONSE=$(curl -k -X POST \
             --url "http://164.52.193.50:8081/api/v1/bom" \
             -H "X-Api-Key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}" \
             -H "Content-Type: application/json" \
-            -d "{\"project\":\"$PROJECT_UUID\",\"bom\":\"$BOM_ENCODED\"}"
+            -d "{\"project\":\"$PROJECT_UUID\",\"bom\":\"$BOM_ENCODED\"}" \
+            -w "%{http_code}" -o response.txt)
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "Failed to upload SBOM, server responded with status code: $RESPONSE"
+            echo "Response body:"
+            cat response.txt
+            exit 1
+          else
+            echo "SBOM uploaded successfully."
+          fi
         env:
           DEPENDENCYTRACK_APIKEY: ${{ secrets.DEPENDENCYTRACK_APIKEY }} # Set the API key as a secret
+
+      - name: Archive SBOM as Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: sbom-artifact
+          path: bom.xml # or "bom.json" if you generated JSON format
