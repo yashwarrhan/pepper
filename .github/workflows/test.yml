@@ -1,70 +1,89 @@
-name: SBOM Generation, Upload, and Failure Handling
+name: SBOM and Upload to Dependency-Track
+
 on:
-  push:
+  push: # Adjust this trigger as needed
 
 jobs:
-  sbom-process:
+  sbom-and-upload:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-      - name: Set up Python 3.8
+      # Set up Python environment
+      - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
 
-      - name: Install Dependencies
+      # Install system dependencies
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libkrb5-dev
+
+      # Install Python dependencies
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libkrb5-dev
           python -m pip install --upgrade pip
+          pip install tabulate
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Generate SBOM (XML)
-        uses: CycloneDX/gh-python-generate-sbom@v2
-        with:
-          input: requirements.txt
-          output: bom.xml
-          format: xml
+      # Generate full list of dependencies
+      - name: Generate comprehensive requirements.txt
+        run: pip freeze > full_requirements.txt
 
-      - name: Generate SBOM (JSON)
+      # Generate Python SBOM
+      - name: Generate Python SBOM
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
-          input: requirements.txt
-          output: bom.json
+          input: ./full_requirements.txt
+          output: ./bom.json
           format: json
 
-      - name: Upload XML SBOM to Dependency-Track
-        id: upload-xml
+      # Upload SBOM to Dependency-Track
+      - name: Upload BOM to Dependency-Track
+        id: upload_bom # Add an ID to reference the step later
         run: |
-          echo "Uploading bom.xml to Dependency-Track..."
-          # Placeholder for the upload command
-          # Replace with actual command to upload bom.xml
-          # For demonstration, we simulate a successful upload:
-          echo "XML upload simulated successfully."
+          response=$(curl -k -X 'POST' \
+            'http://164.52.193.50:8081/api/v1/bom' \
+            -H 'X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_APIKEY }}' \
+            -H 'Content-Type: multipart/form-data' \
+            -F 'projectName=test' \
+            -F 'projectVersion=1.0' \
+            -F 'autoCreate=true' \
+            -F 'bom=@./bom.json')
+          echo "::set-output name=response::$response" # Set the response as an output variable
+        env:
+          DEPENDENCY_TRACK_APIKEY: ${{ secrets.DEPENDENCY_TRACK_APIKEY }}
 
-      - name: Upload JSON SBOM to Dependency-Track
-        id: upload-json
+      # Check upload response
+      - name: Check Upload Response
         run: |
-          echo "Uploading bom.json to Dependency-Track..."
-          # Placeholder for the upload command
-          # Replace with actual command to upload bom.json
-          # For demonstration, we simulate an error:
-          echo "Error encountered during JSON upload" >&2
-          exit 1
+          response="${{ steps.upload_bom.outputs.response }}"
+          echo "Upload response: $response"
+          if [[ "$response" == *"201 Created"* ]] || [[ "$response" == *"200 OK"* ]]; then
+            echo "Upload successful"
+          else
+            echo "Upload failed"
+            exit 1
+          fi
 
-      - name: Archive SBOM Artifacts on Failure
-        if: failure()
-        uses: actions/upload-artifact@v2
+      # Parse SBOM and create table
+      - name: Parse SBOM and Create Table
+        run: |
+          python - <<EOF
+          import json
+          from tabulate import tabulate
+          with open('bom.json') as bom_file:
+              data = json.load(bom_file)
+              components = data.get('components', [])
+              table = tabulate(components, headers='keys', tablefmt='github')
+              print(table)
+              with open('sbom_table.txt', 'w') as f:
+                  f.write(table)
+          EOF
+
+      # Upload SBOM tabular artifact
+      - uses: actions/upload-artifact@v2
         with:
-          name: sbom-artifacts
-          path: |
-            bom.xml
-            bom.json
-
-      - name: Notify Upload Failure
-        if: failure()
-        run: |
-          echo "One or more uploads failed. See artifacts for the SBOM files."
+          name: sbom-tabular-artifact
+          path: sbom_table.txt
