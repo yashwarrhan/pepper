@@ -29,7 +29,7 @@ jobs:
         env:
           DTRACK_API_KEY: ${{ secrets.DTRACK_API_KEY }}  # Your API key stored as a secret.
           DTRACK_PROJECT_ID: '9fc512c7-f293-461b-b07c-19c74d13f00d'  # Replace with your project ID.
-          DTRACK_URL: 'http://164.52.193.50:8080'  # Replace with your Dependency-Track URL.
+          DTRACK_URL: 'http://164.52.193.50:8081'  # Replace with your Dependency-Track URL.
         run: |
           curl -X "POST" "${DTRACK_URL}/api/v1/bom" \
           -H "X-Api-Key: ${DTRACK_API_KEY}" \
