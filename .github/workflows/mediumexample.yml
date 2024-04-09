@@ -1,0 +1,38 @@
+name: Python CycloneDX BOM Generation and Upload
+
+on:
+  push:
+    branches: [ master ]  # Trigger the workflow on push to the master branch.
+
+jobs:
+  build-and-upload-bom:
+    runs-on: ubuntu-latest  # Run on the latest Ubuntu runner.
+    
+    steps:
+      - uses: actions/checkout@v2  # Checkout the repository code.
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'  # Replace with the version you need.
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install cyclonedx-bom  # Replace with your method of installing CycloneDX.
+
+      - name: Generate BOM File
+        run: |
+          cyclonedx-py -o bom.xml  # Replace with the correct command to generate the BOM file.
+
+      - name: Upload BOM to Dependency-Track
+        env:
+          DTRACK_API_KEY: ${{ secrets.DTRACK_API_KEY }}  # Your API key stored as a secret.
+          DTRACK_PROJECT_ID: '9fc512c7-f293-461b-b07c-19c74d13f00d'  # Replace with your project ID.
+          DTRACK_URL: 'http://164.52.193.50:8080'  # Replace with your Dependency-Track URL.
+        run: |
+          curl -X "POST" "${DTRACK_URL}/api/v1/bom" \
+          -H "X-Api-Key: ${DTRACK_API_KEY}" \
+          -H "Content-Type: multipart/form-data" \
+          -F "project=@bom.xml" \
+          -F "autoCreate=true"
