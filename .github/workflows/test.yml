@@ -1,15 +1,16 @@
-name: SBOMXML
+name: SBOM Upload Workflow
 on:
-  push: # Trigger the workflow on push events
+  push:
 
 jobs:
-  sbom-upload:
+  generate-and-upload-sbom:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Set up Python 3.8
+      - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
@@ -22,49 +23,50 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Generate SBOM (XML)
-        uses: CycloneDX/gh-python-generate-sbom@v2
-        with:
-          input: requirements.txt
-          output: bom.xml
-          format: xml
+        id: gen-xml
+        run: |
+          echo "Generating SBOM in XML format..."
+          # Your command to generate XML SBOM
+          # Placeholder for demonstration
+          echo "<sbom>Example XML SBOM</sbom>" > bom.xml
 
       - name: Generate SBOM (JSON)
-        uses: CycloneDX/gh-python-generate-sbom@v2
-        with:
-          input: requirements.txt
-          output: bom.json
-          format: json
-
-      - name: Upload SBOMs to Dependency-Track
+        id: gen-json
         run: |
-          DEPENDENCY_TRACK_URL="http://your_dependency_track_server_address:port/api/v1/bom"
-          API_KEY="${{ secrets.DEPENDENCYTRACK_APIKEY }}"
-          PROJECT_UUID="your_project_uuid"
+          echo "Generating SBOM in JSON format..."
+          # Your command to generate JSON SBOM
+          # Placeholder for demonstration
+          echo '{"sbom": "Example JSON SBOM"}' > bom.json
 
-          for BOM_FILE in bom.xml bom.json; do
-            echo "Uploading $BOM_FILE to Dependency-Track"
-            BOM_ENCODED=$(base64 -w 0 $BOM_FILE)
-            RESPONSE=$(curl -k -X "POST" \
-              --url "$DEPENDENCY_TRACK_URL" \
-              -H "X-Api-Key: $API_KEY" \
-              -H "Content-Type: application/json" \
-              -d "{\"project\":\"$PROJECT_UUID\",\"bom\":\"$BOM_ENCODED\"}" \
-              -w "%{http_code}" -o response.txt -s)
-              
-            if [ "$RESPONSE" -ne 200 ]; then
-              echo "Failed to upload $BOM_FILE. HTTP Status: $RESPONSE"
-              echo "Response body:"
-              cat response.txt
-              exit 1
-            else
-              echo "$BOM_FILE uploaded successfully."
-            fi
-          done
+      - name: Upload XML SBOM to Dependency-Track
+        id: upload-xml
+        run: |
+          echo "Uploading bom.xml to Dependency-Track..."
+          # Placeholder for the upload command
+          # Replace with actual command to upload bom.xml
+          # For demonstration, we simulate a successful upload:
+          echo "XML upload simulated successfully."
 
-      - name: Archive SBOM Artifacts
+      - name: Upload JSON SBOM to Dependency-Track
+        id: upload-json
+        run: |
+          echo "Uploading bom.json to Dependency-Track..."
+          # Placeholder for the upload command
+          # Replace with actual command to upload bom.json
+          # For demonstration, we simulate an error:
+          echo "Error encountered during JSON upload" >&2
+          exit 1
+
+      - name: Archive SBOM Artifacts on Failure
+        if: failure()
         uses: actions/upload-artifact@v2
         with:
           name: sbom-artifacts
           path: |
             bom.xml
             bom.json
+
+      - name: Notify Upload Failure
+        if: failure()
+        run: |
+          echo "One or more uploads failed. See artifacts for the SBOM files."
