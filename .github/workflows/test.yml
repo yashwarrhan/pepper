@@ -1,4 +1,4 @@
-name: SBOM and Upload to Dependency-Track
+name: SBOM and Upload to Dependency Track
 
 on:
   push: # Adjust this trigger as needed
@@ -41,7 +41,7 @@ jobs:
 
       # Upload SBOM to Dependency-Track
       - name: Upload BOM to Dependency-Track
-        id: upload_bom # Add an ID to reference the step later
+        id: upload_bom
         run: |
           response=$(curl -k -X 'POST' \
             'http://164.52.193.50:8081/api/v1/bom' \
@@ -50,19 +50,17 @@ jobs:
             -F 'projectName=test' \
             -F 'projectVersion=1.0' \
             -F 'autoCreate=true' \
-            -F 'bom=@./bom.json')
-          echo "::set-output name=response::$response" # Set the response as an output variable
-        env:
-          DEPENDENCY_TRACK_APIKEY: ${{ secrets.DEPENDENCY_TRACK_APIKEY }}
+            -F 'bom=@./bom.json' \
+            -w "%{http_code}") # This will output the HTTP status code
+          echo "response=$response" >> $GITHUB_ENV # This is the new way to set an output
 
       # Check upload response
       - name: Check Upload Response
         run: |
-          response="${{ steps.upload_bom.outputs.response }}"
-          echo "Upload response: $response"
-          if [[ "$response" == *"201 Created"* ]] || [[ "$response" == *"200 OK"* ]]; then
+          if [[ "$response" == "201" ]] || [[ "$response" == "200" ]]; then
             echo "Upload successful"
           else
+            echo "Upload response: $response"
             echo "Upload failed"
             exit 1
           fi
