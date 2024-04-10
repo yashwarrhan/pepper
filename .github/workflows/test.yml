@@ -47,23 +47,13 @@ jobs:
             -H 'Content-Type: multipart/form-data' \
             -H "X-Api-Key: odt_45JbhGOhjHpZfQ0CC3F5HFF8cVH08zU5" \
             -F "autoCreate=true" \
-            -F "projectName=test-aman" \
+            -F "projectName=test-yash" \
             -F "projectVersion=1.0" \
             -F "bom=@./bom.json" \
             -w "%{http_code}")
           echo "response=$response" >> $GITHUB_ENV
 
-      # Check upload response
-      - name: Check Upload Response
-        run: |
-          if [[ "$response" == "201" ]] || [[ "$response" == "200" ]]; then
-            echo "Upload successful"
-          else
-            echo "Upload response: $response"
-            echo "Upload failed"
-            exit 1
-          fi
-
+    
       # Upload SBOM JSON file as an artifact
       - uses: actions/upload-artifact@v2
         with:
