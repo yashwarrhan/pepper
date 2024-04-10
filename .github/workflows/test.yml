@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install tabulate
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
+          
       # Generate full list of dependencies
       - name: Generate comprehensive requirements.txt
         run: pip freeze > full_requirements.txt
@@ -36,23 +36,22 @@ jobs:
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
           input: ./full_requirements.txt
-          output: ./bom.json
-          format: json
+          output: ./bom.xml # Ensure this generates an XML formatted file
+          format: xml
 
       # Upload SBOM to Dependency-Track
       - name: Upload BOM to Dependency-Track
         id: upload_bom
         run: |
-          response=$(curl -k -X 'POST' \
-            'http://164.52.193.50:8081/api/v1/bom' \
-            -H 'X-Api-Key: ${{ secrets.DEPENDENCY_TRACK_APIKEY }}' \
+          response=$(curl -X "POST" "http://164.52.193.50:8081/api/v1/bom" \
             -H 'Content-Type: multipart/form-data' \
-            -F 'projectName=test' \
-            -F 'projectVersion=1.0' \
-            -F 'autoCreate=true' \
-            -F 'bom=@./bom.json' \
-            -w "%{http_code}") # This will output the HTTP status code
-          echo "response=$response" >> $GITHUB_ENV # This is the new way to set an output
+            -H "X-Api-Key: odt_45JbhGOhjHpZfQ0CC3F5HFF8cVH08zU5" \
+            -F "autoCreate=true" \
+            -F "projectName=test-aman" \
+            -F "projectVersion=1.0" \
+            -F "bom=@./bom.xml" \
+            -w "%{http_code}")
+          echo "response=$response" >> $GITHUB_ENV
 
       # Check upload response
       - name: Check Upload Response
@@ -71,8 +70,8 @@ jobs:
           python - <<EOF
           import json
           from tabulate import tabulate
-          with open('bom.json') as bom_file:
-              data = json.load(bom_file)
+          with open('bom.xml') as bom_file: # Make sure this matches your file format
+              data = json.load(bom_file) # Update this part to handle XML if you're processing an XML file
               components = data.get('components', [])
               table = tabulate(components, headers='keys', tablefmt='github')
               print(table)
