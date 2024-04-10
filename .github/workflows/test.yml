@@ -26,18 +26,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install tabulate
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          
+
       # Generate full list of dependencies
       - name: Generate comprehensive requirements.txt
         run: pip freeze > full_requirements.txt
 
-      # Generate Python SBOM
+      # Generate Python SBOM in JSON format
       - name: Generate Python SBOM
         uses: CycloneDX/gh-python-generate-sbom@v2
         with:
           input: ./full_requirements.txt
-          output: ./bom.xml # Ensure this generates an XML formatted file
-          format: xml
+          output: ./bom.json
+          format: json
 
       # Upload SBOM to Dependency-Track
       - name: Upload BOM to Dependency-Track
@@ -49,7 +49,7 @@ jobs:
             -F "autoCreate=true" \
             -F "projectName=test-aman" \
             -F "projectVersion=1.0" \
-            -F "bom=@./bom.xml" \
+            -F "bom=@./bom.json" \
             -w "%{http_code}")
           echo "response=$response" >> $GITHUB_ENV
 
@@ -64,23 +64,8 @@ jobs:
             exit 1
           fi
 
-      # Parse SBOM and create table
-      - name: Parse SBOM and Create Table
-        run: |
-          python - <<EOF
-          import json
-          from tabulate import tabulate
-          with open('bom.xml') as bom_file: # Make sure this matches your file format
-              data = json.load(bom_file) # Update this part to handle XML if you're processing an XML file
-              components = data.get('components', [])
-              table = tabulate(components, headers='keys', tablefmt='github')
-              print(table)
-              with open('sbom_table.txt', 'w') as f:
-                  f.write(table)
-          EOF
-
-      # Upload SBOM tabular artifact
+      # Upload SBOM JSON file as an artifact
       - uses: actions/upload-artifact@v2
         with:
-          name: sbom-tabular-artifact
-          path: sbom_table.txt
+          name: sbom-artifact
+          path: bom.json
