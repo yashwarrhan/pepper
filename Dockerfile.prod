@@ -1,4 +1,4 @@
-FROM python:3.9.6-alpine as builder
+FROM python:3.13.0b1-alpine as builder
 
 WORKDIR /usr/src/pepper
 
@@ -17,7 +17,7 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/pepper/wheels -r req
 
 
 
-FROM python:3.9.6-alpine
+FROM python:3.13.0b1-alpine
 
 RUN mkdir -p /home/pepper
 RUN addgroup -S pepper && adduser -S pepper -G pepper
