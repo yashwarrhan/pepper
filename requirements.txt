@@ -1,5 +1,5 @@
 Django==4.1
-Djangorestframework==3.13.0
+Djangorestframework==3.15.2
 psycopg2-binary==2.9.5
 ipython==8.4.0
 djangorestframework-simplejwt==5.2.0
