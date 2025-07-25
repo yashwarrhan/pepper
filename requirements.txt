@@ -2,7 +2,7 @@ Django==4.1
 Djangorestframework==3.13.0
 psycopg2-binary==2.9.5
 ipython==8.4.0
-djangorestframework-simplejwt==5.2.0
+djangorestframework-simplejwt==5.5.1
 django-cors-headers==3.13.0
 pymongo[snappy,gssapi,srv,tls]
 openfoodfacts==0.1.3
